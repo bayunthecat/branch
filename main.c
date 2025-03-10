@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
 
 int straight = 5;
 int end = 8;
@@ -10,12 +11,33 @@ int lShape = 12;
 
 typedef struct Tile {
   int value;
-  int x;
-  int y;
-  int size;
   int connected;
-  int source;
 } Tile;
+
+void printArray(int **arr, int rows, int cols) {
+  for (int i = 0; i < rows; i++) {
+    for (int j = 0; j < cols; j++) {
+      printf("%d", arr[i][j]);
+    }
+    printf("\n");
+  }
+}
+
+// for debug
+void printBinary(int n) {
+  printf("printing binary\n");
+  char *c = malloc(5 * sizeof(char));
+  memset(c, 0, 5);
+  int i = 0;
+  while (i != 4) {
+    c[3 - i] = n & 1 ? '1' : '0';
+    n = n >> 1;
+    i++;
+  }
+  c[4] = '\0';
+  printf("%s\n", c);
+  free(c);
+}
 
 int hasLeft(Tile *t) { return (t->value & 0b1000) >> 3; }
 
@@ -25,47 +47,38 @@ int hasUp(Tile *t) { return (t->value & 0b0100) >> 2; }
 
 int hasDown(Tile *t) { return t->value & 0b0001; }
 
-void DrawVerticalDashedRect(int x, int y, int width, int height) {
-  for (int i = y; i < y + height; i = i + 10) {
-    DrawRectangle(x, i, width, 5, BLACK);
-  }
-}
-
-void DrawHorizontalDashedRect(int x, int y, int width, int height) {
-  for (int i = x; i < x + width; i = i + 10) {
-    DrawRectangle(i, y, 5, height, BLACK);
-  }
-}
-
-void DrawTile(Tile *t) {
-  DrawRectangle(t->x, t->y, t->size, t->size, BLACK);
-  DrawRectangle(t->x + 5, t->y + 5, t->size - 10, t->size - 10, WHITE);
+void DrawTile(Tile *t, int x, int y, int size) {
+  int borderWidth = 1;
+  DrawRectangle(x, y, size, size, GRAY);
+  DrawRectangle(x + borderWidth, y + borderWidth, size - (borderWidth * 2),
+                size - (borderWidth * 2), WHITE);
+  int center = ((size - (borderWidth * 2)) / 2);
   if (hasLeft(t)) {
     if (t->connected) {
-      DrawRectangle(t->x, t->y + 43, 45, 5, BLACK);
+      DrawRectangle(x, y + 43, 45, 5, GREEN);
     } else {
-      DrawHorizontalDashedRect(t->x, t->y + 43, 45, 5);
+      DrawRectangle(x, y + 43, 45, 5, GRAY);
     }
   }
   if (hasUp(t)) {
     if (t->connected) {
-      DrawRectangle(t->x + 43, t->y, 5, 45, BLACK);
+      DrawRectangle(x + 43, y, 5, 45, GREEN);
     } else {
-      DrawVerticalDashedRect(t->x + 43, t->y, 5, 45);
+      DrawRectangle(x + 43, y, 5, 45, GRAY);
     }
   }
   if (hasRight(t)) {
     if (t->connected) {
-      DrawRectangle(t->x + 43 + 5, t->y + 43, 45, 5, BLACK);
+      DrawRectangle(x + 43 + 5, y + 43, 45, 5, GREEN);
     } else {
-      DrawHorizontalDashedRect(t->x + 43 + 5, t->y + 43, 45, 5);
+      DrawRectangle(x + 43 + 5, y + 43, 45, 5, GRAY);
     }
   }
   if (hasDown(t)) {
     if (t->connected) {
-      DrawRectangle(t->x + 43, t->y + 43 + 5, 5, 45, BLACK);
+      DrawRectangle(x + 43, y + 43 + 5, 5, 45, GREEN);
     } else {
-      DrawVerticalDashedRect(t->x + 43, t->y + 43, 5, 45);
+      DrawRectangle(x + 43, y + 43, 5, 45, GRAY);
     }
   }
 }
@@ -75,33 +88,109 @@ Tile ***InitBoard(int rows, int cols) {
   for (int i = 0; i < rows; i++) {
     brd[i] = malloc(cols * sizeof(Tile));
     for (int j = 0; j < cols; j++) {
-      brd[i][j] = malloc(sizeof(Tile *));
+      brd[i][j] = malloc(sizeof(Tile));
     }
   }
   return brd;
 }
 
-Tile *tile(int x, int y, int size, int val, int source) {
+Tile *tile(int val, int source) {
   Tile *t = malloc(sizeof(Tile *));
-  t->x = x;
-  t->y = y;
-  t->size = size;
   t->value = val;
   t->connected = 0;
-  t->source = source;
   return t;
 }
 
+int r(int min, int max) { return min + rand() % (max - min + 1); }
+
+int roll30P() {
+  int result = rand() % 100;
+  printf("random: %d\n", result);
+  return result < 50;
+}
+
+void GenBoard(Tile ***brd, int x, int y, int rows, int cols, int **reserved) {
+  printf("reserved:\n");
+  printArray(reserved, rows, cols);
+  printf("x: %d, y: %d\n", x, y);
+  if (x < 0 || x >= rows) {
+    return;
+  }
+  if (y < 0 || y >= cols) {
+    return;
+  }
+  int genValue = 0;
+  int branches = 0;
+  if (y - 1 >= 0) {
+    if (hasRight(brd[x][y - 1]) || (!reserved[x][y - 1] && roll30P())) {
+      genValue = genValue | 0b1000;
+      reserved[x][y - 1] = 1;
+      branches++;
+      if (brd[x][y - 1] != 0) {
+        GenBoard(brd, x, y - 1, rows, cols, reserved);
+      }
+    }
+  }
+  if (x - 1 >= 0) {
+    if (hasDown(brd[x - 1][y]) || (!reserved[x - 1][y] && roll30P())) {
+      genValue = genValue | 0b0100;
+      reserved[x - 1][y] = 1;
+      branches++;
+      if (brd[x - 1][y]->value == 0) {
+        GenBoard(brd, x - 1, y, rows, cols, reserved);
+      }
+    }
+  }
+  if (y + 1 < cols) {
+    if (hasLeft(brd[x][y + 1]) || (!reserved[x][y + 1] && roll30P())) {
+      genValue = genValue | 0b0010;
+      reserved[x][y + 1] = 1;
+      branches++;
+      if (brd[x][y + 1]->value == 0) {
+        GenBoard(brd, x, y + 1, rows, cols, reserved);
+      }
+    }
+  }
+  if (x + 1 < cols) {
+    if (hasUp(brd[x + 1][y]) || (!reserved[x + 1][y] && roll30P())) {
+      genValue = genValue | 0b0001;
+      branches++;
+      if (brd[x + 1][y]->value == 0) {
+        GenBoard(brd, x + 1, y, rows, cols, reserved);
+      }
+    }
+  }
+  printBinary(genValue);
+  brd[x][y]->value = genValue;
+}
+
 void GenerateBoard(Tile ***brd, int rows, int cols) {
-  int x = 10;
-  int y = 10;
   for (int i = 0; i < rows; i++) {
     for (int j = 0; j < cols; j++) {
-      brd[i][j] = tile(x, y, 100, 0, 0);
-      x += 90;
+      brd[i][j] = tile(0, 0);
     }
-    x = 10;
-    y += 90;
+  }
+  int **reserved = malloc(rows * sizeof(int *));
+  for (int i = 0; i < rows; i++) {
+    reserved[i] = malloc(cols * sizeof(int));
+    for (int j = 0; j < cols; j++) {
+      reserved[i][j] = 0;
+    }
+  }
+  // Hardcoded start
+  reserved[5][5] = 1;
+  GenBoard(brd, 5, 5, rows, cols, reserved);
+  for (int i = 0; i < rows; i++) {
+    free(reserved[i]);
+  }
+  free(reserved);
+}
+
+void GenerateStaticBoard(Tile ***brd, int rows, int cols) {
+  for (int i = 0; i < rows; i++) {
+    for (int j = 0; j < cols; j++) {
+      brd[i][j] = tile(0, 0);
+    }
   }
   //
   // 12 - L shape
@@ -146,7 +235,6 @@ void GenerateBoard(Tile ***brd, int rows, int cols) {
   brd[5][4]->value = end;
 
   brd[5][5]->value = tShape;
-  brd[5][5]->source = 1;
   brd[5][5]->connected = 1;
 
   brd[5][6]->value = tShape;
@@ -193,22 +281,6 @@ void GenerateBoard(Tile ***brd, int rows, int cols) {
   brd[9][7]->value = lShape;
   brd[9][8]->value = 0;
   brd[9][9]->value = end;
-}
-
-// for debug
-void printBinary(int n) {
-  printf("printing binary\n");
-  char *c = malloc(5 * sizeof(char));
-  memset(c, 0, 5);
-  int i = 0;
-  while (i != 4) {
-    c[3 - i] = n & 1 ? '1' : '0';
-    n = n >> 1;
-    i++;
-  }
-  c[4] = '\0';
-  printf("%s\n", c);
-  free(c);
 }
 
 void RotateLeft(Tile *t) {
@@ -264,23 +336,40 @@ void FreeBoard(Tile ***brd, int rows, int cols) {
     for (int j = 0; j < cols; j++) {
       free(brd[i][j]);
     }
+    free(brd[i]);
   }
   free(brd);
 }
 
-int main() {
+int main(int argc, char **argv) {
+  srand(time(NULL));
+  int tileSizePx = 100;
+
+  int screenW = 1920;
+  int screenH = 1080;
+
   int rows = 11;
   int cols = 11;
+
   Tile ***brd = InitBoard(rows, cols);
   GenerateBoard(brd, rows, cols);
-  InitWindow(1920, 1080, "Hello raylib");
+
+  printf("values:");
+  for (int i = 0; i < rows; i++) {
+    for (int j = 0; j < cols; j++) {
+      printf("%d, ", brd[i][j]->value);
+    }
+    printf("\n");
+  }
+
+  InitWindow(screenW, screenH, "Branch");
   while (!WindowShouldClose()) {
     BeginDrawing();
     int x = 10;
     int y = 10;
     for (int i = 0; i < cols; i++) {
       for (int j = 0; j < rows; j++) {
-        DrawTile(brd[i][j]);
+        DrawTile(brd[i][j], x, y, tileSizePx);
         x += 90;
       }
       x = 10;
@@ -290,7 +379,7 @@ int main() {
     ClearBackground(WHITE);
     EndDrawing();
   }
+  FreeBoard(brd, rows, cols);
   CloseWindow();
-  FreeBoard(brd, 11, 11);
   return 0;
 }
