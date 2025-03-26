@@ -1,19 +1,9 @@
+#include "queue.h"
 #include <stddef.h>
 #include <stdio.h>
 #include <stdlib.h>
 
-typedef struct Node {
-  void *data;
-  struct Node *next;
-} Node;
-
-typedef struct {
-  Node *head;
-  Node *tail;
-  int len;
-} Queue;
-
-Queue *newQueue() {
+Queue *NewQueue() {
   Queue *q = malloc(sizeof(Queue));
   q->tail = NULL;
   q->head = NULL;
@@ -21,7 +11,7 @@ Queue *newQueue() {
   return q;
 }
 
-void offer(Queue *q, void *val) {
+void Offer(Queue *q, void *val) {
   Node *new = malloc(sizeof(Node));
   new->data = val;
   new->next = NULL;
@@ -36,7 +26,7 @@ void offer(Queue *q, void *val) {
   q->tail = new;
 }
 
-void *poll(Queue *q) {
+void *Poll(Queue *q) {
   if (q->head == NULL) {
     return NULL;
   }
@@ -48,7 +38,7 @@ void *poll(Queue *q) {
   return d;
 }
 
-void freeQueue(Queue *q) {
+void FreeQueue(Queue *q) {
   Node *head = q->head;
   while (head != NULL) {
     free(head->data);
@@ -57,17 +47,4 @@ void freeQueue(Queue *q) {
     head = tmp;
   }
   free(q);
-}
-
-int main() {
-  Queue *queue = newQueue();
-  offer(queue, "first");
-  offer(queue, "second");
-  offer(queue, "third");
-
-  printf("polled %s, len %d\n", (char *)poll(queue), queue->len);
-  printf("polled %s, len %d\n", (char *)poll(queue), queue->len);
-  printf("polled %s, len %d\n", (char *)poll(queue), queue->len);
-
-  freeQueue(queue);
 }
