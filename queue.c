@@ -32,8 +32,11 @@ void *Poll(Queue *q) {
   }
   q->len--;
   Node *head = q->head;
-  q->head = q->head->next;
   void *d = head->data;
+  q->head = q->head->next;
+  if (q->head == NULL) {
+    q->tail = NULL;
+  }
   free(head);
   return d;
 }
