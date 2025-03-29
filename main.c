@@ -99,7 +99,6 @@ void GenerateBoard(Tile ***brd, int rows, int cols) {
     int len = queue->len;
     for (int i = 0; i < len; i++) {
       Tile *t = Poll(queue);
-      printf("%d, %d\n", t->x, t->y);
       if (visited[t->x][t->y]) {
         continue;
       }
