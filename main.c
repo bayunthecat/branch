@@ -1,30 +1,30 @@
 #include "arrays.h"
 #include "queue.h"
 #include "raylib.h"
+#include "raymath.h"
 #include <stdatomic.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
-#include <time.h>
-
-int straight = 5;
-int end = 8;
-int tShape = 7;
-int lShape = 12;
 
 typedef struct Tile {
-  int x;
-  int y;
+  Vector3 position;
+  Vector3 size;
+  Vector3 rotation;
+  Vector3 scale;
   int value;
   int connected;
+  int x, y;
 } Tile;
 
-Tile *tile(int val, int x, int y) {
+Tile *tile(Vector3 position, int val, int x, int y) {
   Tile *t = malloc(sizeof(Tile));
-  t->value = val;
-  t->connected = 0;
+  t->position = position;
+  t->rotation = (Vector3){0.0f, -1.0f, 0.0f};
+  t->scale = (Vector3){1.0f, 1.0f, 1.0f};
+  t->size = (Vector3){1.0f, 1.0f, 1.0f};
   t->x = x;
   t->y = y;
+  t->connected = 0;
   return t;
 }
 
@@ -36,49 +36,25 @@ int hasUp(Tile *t) { return (t->value & 0b0100) >> 2; }
 
 int hasDown(Tile *t) { return t->value & 0b0001; }
 
-void DrawTile(Tile *t, int x, int y, int size) {
-  int borderWidth = 1;
-  DrawRectangle(x, y, size, size, GRAY);
-  DrawRectangle(x + borderWidth, y + borderWidth, size - (borderWidth * 2),
-                size - (borderWidth * 2), WHITE);
-  int center = ((size - (borderWidth * 2)) / 2);
-  if (hasLeft(t)) {
-    if (t->connected) {
-      DrawRectangle(x, y + 43, 45, 5, GREEN);
-    } else {
-      DrawRectangle(x, y + 43, 45, 5, GRAY);
-    }
-  }
-  if (hasUp(t)) {
-    if (t->connected) {
-      DrawRectangle(x + 43, y, 5, 45, GREEN);
-    } else {
-      DrawRectangle(x + 43, y, 5, 45, GRAY);
-    }
-  }
-  if (hasRight(t)) {
-    if (t->connected) {
-      DrawRectangle(x + 43 + 5, y + 43, 45, 5, GREEN);
-    } else {
-      DrawRectangle(x + 43 + 5, y + 43, 45, 5, GRAY);
-    }
-  }
-  if (hasDown(t)) {
-    if (t->connected) {
-      DrawRectangle(x + 43, y + 43 + 5, 5, 45, GREEN);
-    } else {
-      DrawRectangle(x + 43, y + 43, 5, 45, GRAY);
-    }
-  }
+void DrawTile(Tile *t, Model *model) {
+
+  DrawModelWiresEx(*model, t->position, t->rotation, 0, t->scale, BLACK);
 }
 
 Tile ***InitBoard(int rows, int cols) {
+  // TODO Assume it's always 8 by 8 for now
+  Vector3 pos = {-16.0f, 0.0f, -16.0f};
+  Vector3 jInc = {4.0f, 0.0f, 0.0f};
+  Vector3 iInc = {0.0f, 0.0f, 4.0f};
   Tile ***brd = malloc(rows * sizeof(Tile **));
   for (int i = 0; i < rows; i++) {
     brd[i] = malloc(cols * sizeof(Tile *));
     for (int j = 0; j < cols; j++) {
-      brd[i][j] = tile(0, i, j);
+      brd[i][j] = tile(pos, 0, i, j);
+      pos = Vector3Add(pos, jInc);
     }
+    pos.x = -16.0f;
+    pos = Vector3Add(pos, iInc);
   }
   return brd;
 }
@@ -94,7 +70,7 @@ void GenerateBoard(Tile ***brd, int rows, int cols) {
   int **res = NewTwoDimArray(rows, cols, 0);
   Queue *queue = NewQueue();
   // Hardcoded start
-  Offer(queue, brd[5][5]);
+  Offer(queue, brd[4][4]);
   int **visited = NewTwoDimArray(rows, cols, 0);
   while (queue->len != 0) {
     int len = queue->len;
@@ -181,15 +157,14 @@ void markConnected(Tile ***brd, int i, int j, int rows, int cols) {
   }
 }
 
-void HandleBoardUpdate(Tile ***brd) {
-  if (IsMouseButtonReleased(MOUSE_BUTTON_LEFT)) {
-    Vector2 mouseClick = GetMousePosition();
-    int j = mouseClick.x / 90;
-    int i = mouseClick.y / 90;
-    RotateLeft(brd[i][j]);
+void HandleBoardUpdate(Tile ***brd, Camera *cam, int rows, int cols) {
+  if (IsMouseButtonDown(MOUSE_BUTTON_LEFT)) {
+    Ray ray = GetScreenToWorldRay(GetMousePosition(), *cam);
+    printf("pos: %f, %f, %f; dir: %f, %f, %f\n", ray.position.x, ray.position.y,
+           ray.position.z, ray.direction.x, ray.direction.y, ray.direction.z);
   }
-  cleanConnected(brd, 11, 11);
-  markConnected(brd, 5, 5, 11, 11);
+  cleanConnected(brd, rows, cols);
+  markConnected(brd, 4, 4, rows, cols);
 }
 
 void FreeBoard(Tile ***brd, int rows, int cols) {
@@ -202,67 +177,42 @@ void FreeBoard(Tile ***brd, int rows, int cols) {
   free(brd);
 }
 
-/*int main(int argc, char **argv) {*/
-/*  srand(time(NULL));*/
-/*  int tileSizePx = 100;*/
-/**/
-/*  int screenW = 1920;*/
-/*  int screenH = 1080;*/
-/**/
-/*  int rows = 11;*/
-/*  int cols = 11;*/
-/**/
-/*  Tile ***brd = InitBoard(rows, cols);*/
-/*  GenerateBoard(brd, rows, cols);*/
-/*  InitWindow(screenW, screenH, "Branch");*/
-/*  while (!WindowShouldClose()) {*/
-/*    BeginDrawing();*/
-/*    int x = 10;*/
-/*    int y = 10;*/
-/*    for (int i = 0; i < cols; i++) {*/
-/*      for (int j = 0; j < rows; j++) {*/
-/*        DrawTile(brd[i][j], x, y, tileSizePx);*/
-/*        x += 90;*/
-/*      }*/
-/*      x = 10;*/
-/*      y += 90;*/
-/*    }*/
-/*    HandleBoardUpdate(brd);*/
-/*    ClearBackground(WHITE);*/
-/*    EndDrawing();*/
-/*  }*/
-/*  CloseWindow();*/
-/*  FreeBoard(brd, rows, cols);*/
-/*  return 0;*/
-/*}*/
-
 int main(int argc, char **argv) {
 
-  int screenW = 800;
-  int screenH = 450;
+  int screenW = 1920;
+  int screenH = 1080;
 
+  int rows = 8;
+  int cols = 8;
+
+  Tile ***brd = InitBoard(rows, cols);
+  GenerateBoard(brd, rows, cols);
   InitWindow(screenW, screenH, "Branch");
+  SetTargetFPS(60);
+
+  Model model = LoadModel("assets/branch_t.glb");
 
   Camera cam = {
-      {0.0f, 10.0f, 10.0f}, {0.0f, 0.0f, 0.0f}, {0.0f, 1.0f, 0.0f}, 45.0f, 0};
+      {0.0f, 20.0f, 10.0f}, {0.0f, 0.0f, 0.0f}, {0.0f, 1.0f, 0.0f}, 100.0f, 0};
 
-  Model model = LoadModel("assets/cube.obj");
-
-  Vector3 position = {0.0f, 1.0f, 2.0f};
-  Vector3 size = {1.0f, 2.0f, 1.0f};
-
-  SetTargetFPS(60);
+  Ray ray = {0};
+  RayCollision co = {0};
 
   while (!WindowShouldClose()) {
     BeginDrawing();
     ClearBackground(WHITE);
     BeginMode3D(cam);
-    DrawGrid(10.0, 1.0f);
-    DrawModel(model, position, 1.0f, BLACK);
+    for (int i = 0; i < cols; i++) {
+      for (int j = 0; j < rows; j++) {
+        DrawTile(brd[i][j], &model);
+      }
+    }
+    HandleBoardUpdate(brd, &cam, rows, cols);
     EndMode3D();
     EndDrawing();
   }
-  UnloadModel(model);
   CloseWindow();
+  UnloadModel(model);
+  FreeBoard(brd, rows, cols);
   return 0;
 }
