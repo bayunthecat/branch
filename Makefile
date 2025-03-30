@@ -1,11 +1,11 @@
 all: final
 
 debug: main_debug.o queue_debug.o arrays_debug.o
-	gcc -fsanitize=address -fno-omit-frame-pointer -o out/branch out/main.o out/queue.o out/arrays.o -lraylib -lGL -lm -lpthread -ldl -lrt -lX11
+	gcc -fsanitize=address -fno-omit-frame-pointer -o branch out/main.o out/queue.o out/arrays.o -lraylib -lGL -lm -lpthread -ldl -lrt -lX11
 
 
 final: main.o queue.o arrays.o
-	gcc -o out/branch out/main.o out/queue.o out/arrays.o -lraylib -lGL -lm -lpthread -ldl -lrt -lX11
+	gcc -o branch out/main.o out/queue.o out/arrays.o -lraylib -lGL -lm -lpthread -ldl -lrt -lX11
 
 out: 
 	test ! -d out && mkdir out

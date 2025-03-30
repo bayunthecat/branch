@@ -1,6 +1,7 @@
 #include "arrays.h"
 #include "queue.h"
 #include "raylib.h"
+#include <stdatomic.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -201,36 +202,67 @@ void FreeBoard(Tile ***brd, int rows, int cols) {
   free(brd);
 }
 
+/*int main(int argc, char **argv) {*/
+/*  srand(time(NULL));*/
+/*  int tileSizePx = 100;*/
+/**/
+/*  int screenW = 1920;*/
+/*  int screenH = 1080;*/
+/**/
+/*  int rows = 11;*/
+/*  int cols = 11;*/
+/**/
+/*  Tile ***brd = InitBoard(rows, cols);*/
+/*  GenerateBoard(brd, rows, cols);*/
+/*  InitWindow(screenW, screenH, "Branch");*/
+/*  while (!WindowShouldClose()) {*/
+/*    BeginDrawing();*/
+/*    int x = 10;*/
+/*    int y = 10;*/
+/*    for (int i = 0; i < cols; i++) {*/
+/*      for (int j = 0; j < rows; j++) {*/
+/*        DrawTile(brd[i][j], x, y, tileSizePx);*/
+/*        x += 90;*/
+/*      }*/
+/*      x = 10;*/
+/*      y += 90;*/
+/*    }*/
+/*    HandleBoardUpdate(brd);*/
+/*    ClearBackground(WHITE);*/
+/*    EndDrawing();*/
+/*  }*/
+/*  CloseWindow();*/
+/*  FreeBoard(brd, rows, cols);*/
+/*  return 0;*/
+/*}*/
+
 int main(int argc, char **argv) {
-  srand(time(NULL));
-  int tileSizePx = 100;
 
-  int screenW = 1920;
-  int screenH = 1080;
+  int screenW = 800;
+  int screenH = 450;
 
-  int rows = 11;
-  int cols = 11;
-
-  Tile ***brd = InitBoard(rows, cols);
-  GenerateBoard(brd, rows, cols);
   InitWindow(screenW, screenH, "Branch");
+
+  Camera cam = {
+      {0.0f, 10.0f, 10.0f}, {0.0f, 0.0f, 0.0f}, {0.0f, 1.0f, 0.0f}, 45.0f, 0};
+
+  Model model = LoadModel("assets/cube.obj");
+
+  Vector3 position = {0.0f, 1.0f, 2.0f};
+  Vector3 size = {1.0f, 2.0f, 1.0f};
+
+  SetTargetFPS(60);
+
   while (!WindowShouldClose()) {
     BeginDrawing();
-    int x = 10;
-    int y = 10;
-    for (int i = 0; i < cols; i++) {
-      for (int j = 0; j < rows; j++) {
-        DrawTile(brd[i][j], x, y, tileSizePx);
-        x += 90;
-      }
-      x = 10;
-      y += 90;
-    }
-    HandleBoardUpdate(brd);
     ClearBackground(WHITE);
+    BeginMode3D(cam);
+    DrawGrid(10.0, 1.0f);
+    DrawModel(model, position, 1.0f, BLACK);
+    EndMode3D();
     EndDrawing();
   }
+  UnloadModel(model);
   CloseWindow();
-  FreeBoard(brd, rows, cols);
   return 0;
 }
